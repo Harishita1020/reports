@@ -1,3 +1,3 @@
 # reports
 
-hello_report
+hello_quarto
