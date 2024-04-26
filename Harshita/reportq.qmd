@@ -1,0 +1,112 @@
+---
+title: "Quarto Assignment MT5000"
+subtitle: "Shadows and Light: Mapping the Landscape of Child Deprivation Worldwide"
+
+author: "Harshita Bhandari"
+date: "2024-04-25"
+format:
+  html:
+    theme: sandstone
+    toc: true
+    
+execute: 
+  echo: false
+  warning: false
+  message: false
+---
+```{r setup, include=FALSE}
+#libraries
+library(tidyverse)
+library(ggplot2)
+library(maps)
+library(dplyr)
+library(plotly)
+library("png")
+#data read
+cleaned_unicef1 <- read.csv("cleaned_unicef1.csv")
+cleaned_metadata <- read.csv("cleaned_metadata.csv")
+total_data <- read.csv("total_data.csv")
+
+#joining 
+data_join <- full_join(cleaned_metadata, cleaned_unicef1)
+data_join <- full_join(cleaned_metadata, cleaned_unicef1, by = join_by(country, year))
+data_join <- full_join(cleaned_metadata, cleaned_unicef1, by = c("country" , "year" ))
+full_join(cleaned_metadata, cleaned_unicef1, by = join_by(country, year))
+full_join(cleaned_metadata, cleaned_unicef1, by = c("country" , "year" ))
+```
+
+## Insights from the World Map
+The map displayed below uses a color gradient to denote the intensity of child deprivation. Darker shades indicate higher percentages of children experiencing at least two deprivations, signaling regions where child welfare needs urgent attention. This visual tool allows policymakers, researchers, and the public to identify focus areas for resource allocation and intervention efforts.
+```{r}
+#map
+library(tidyverse)
+library(ggplot2)
+library(maps)
+library(dplyr)
+library(plotly)
+map_world <- map_data("world")
+
+map_data_join <- full_join(total_data, map_world, by = c("country" = "region"))                       
+ggplot(map_data_join) +
+  aes(x = long, y = lat, group = group, fill = obs_value) +
+  geom_polygon() +
+  labs(title = "Global Distribution of Child Deprivation ",  
+subtitle = "Percentage of children suffering at least two deprivations")
+```
+## Insights from the Bar Graph
+
+The visualization below illustrates the top ten countries facing severe child deprivation issues. Each bar represents a country and is color-coded to distinguish between them easily. The height of the bar indicates the average percentage of children suffering from at least two types of deprivation, providing a clear comparison of the severity across these nations.
+
+By observing the data, we can see significant variation in child welfare across different regions. Countries with higher bars indicate a greater average percentage of children facing multiple deprivations, suggesting a higher priority for intervention in these areas.
+```{r}
+# bar graph
+average_deprivation <- cleaned_unicef1 %>%
+  group_by(country) %>%
+  summarize(AverageDeprivation = mean(obs_value, na.rm = TRUE))
+top_countries <- average_deprivation %>%
+  arrange(desc(AverageDeprivation)) %>%
+  top_n(10, AverageDeprivation) %>%
+  mutate(country = factor(country, levels = rev(unique(country))))  # Ensure correct ordering in the plot
+
+ggplot(top_countries, aes(x = country, y = AverageDeprivation, fill = country)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(  # Adjust y-axis scale to fit the data range properly
+    labels = scales::percent_format(accuracy = 1)
+  ) +
+  scale_fill_viridis_d(direction = -1, guide = "none") +  # Color scale
+  labs(title = "A Closer Look at Inequality: Child Welfare by Country",
+       subtitle = "Top 10 Countries by Average Percentage of Children Suffering from At Least Two Deprivations 2011-2018",
+       x = "Country",
+       y = "Average Percentage of Children in Deprivation") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Improve legibility of country names
+    axis.text.y = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    legend.position = "none"  # Removing the legend as it's redundant
+  )
+```
+```{r}
+#scatter plot
+
+filtered_data <- data_join %>%
+  filter(
+         country %in% c( "India", "Bangladesh", "Pakistan", "Indonesia", "Philippines")) %>%
+  group_by(country)
+ggplot(filtered_data, aes(x = GDP.per.capita..constant.2015.US.., y = obs_value, color = country, group = country)) +
+  geom_point() +  # Adds points to the scatter plot, color-coded by country
+  geom_smooth(method = "lm", se = FALSE, aes(group = country)) +  # Adds a linear regression line per country
+  labs(title = "Indicator over Years",
+       x = "GDP.per.capita..constant.2015.US..",
+       y = "Percentage children suffering at least two deprivation") +
+  theme_minimal()
+
+# Convert to plotly for an interactive plot
+#plotly_scatter_plot <- ggplotly(scatter_plot, tooltip = "text")
+
+# If you're in an R environment that supports it, you can directly display the plot
+#print(plotly_scatter_plot)
+
+```
+
